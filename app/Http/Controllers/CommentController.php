@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Post;
 use App\Models\Comment;
-use App\Models\CommentLike;
+//use App\Models\CommentLike;
 use App\Models\Profile;
 use JWTAuth, Validator,  Hash, URL, Helper, File, Stripe, Session, Exception;
 use Carbon\Carbon;
@@ -249,7 +249,7 @@ class CommentController extends Controller
     *         {"bearer_token": {}}
     *     }
     * )
-    */
+    
     public function likeComment(Request $request)
 	{
         try {
@@ -327,5 +327,6 @@ class CommentController extends Controller
 	    }
 
     }
+*/
 
 }

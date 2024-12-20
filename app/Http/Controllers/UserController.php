@@ -2,6 +2,8 @@
 
 /**
  * UserController class file
+ 
+ 
  *
  * PHP Version 8.1.0
  *
@@ -20,18 +22,20 @@ use App\Models\User;
 use App\Models\UserDetails;
 use App\Models\Wishlist;
 use App\Models\PostReport;
+use App\Models\PostLike;
+use App\Models\Follows;
 //use App\Image;
 use File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Validator;
-
+use Carbon\Carbon;
 class UserController extends Controller
 {
     private function processObject($object)
     {
-        $fieldsToRemove = ['password','created_at', 'deleted_at', 'updated_at', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'];
+        $fieldsToRemove = ['password', 'created_at', 'updated_at', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'];
         if (!empty($fieldsToRemove)) {
             foreach ($fieldsToRemove as $field) {
                 unset($object->{$field});
@@ -452,45 +456,200 @@ class UserController extends Controller
         }
     }
 
+    // public function getAllReportedPost()
+    // {
+    //     try {
+    //         $reportedPost = PostReport::with([
+    //             'post' => function ($query) {
+    //                 $query->select('id', 'caption', 'post_type', 'profile_id', 'boost_status', 'name_of_interest', 'city')
+    //                     ->with(['postRelatedData' => function ($query) {
+    //                         $query->select('id', 'post_id', 'post_data');
+    //                     }]);
+    //             },
+    //             'profile' => function ($query) {
+    //                 $query->select('id', 'user_type_id')
+    //                     ->with([
+    //                         'UserDetail' => function ($query) {
+    //                             $query->select('id', 'full_name', 'profile_id');
+    //                         },
+    //                         'communityDetail' => function ($query) {
+    //                             $query->select('id', 'name_of_community', 'short_description', 'profile_id');
+    //                         }
+    //                     ]);
+    //             }
+    //         ])->get();
+
+    //         return response()->json([
+    //             'code' => 200,
+    //             'status' => 'success',
+    //             'message' => 'Reported Post Retrieved Successfully',
+    //             'data' => $this->processObject($reportedPost),
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'code' => 500,
+    //             'status' => 'error',
+    //             'message' => 'An error occurred while processing the request.',
+    //             'errors' => [$e->getMessage()],
+    //             'data' => [], 
+    //         ], 500);
+    //     }
+    //  }
+
+
+
     public function getAllReportedPost()
-	{
+    {
         try {
-            $reportedPost = PostReport::with([
+            // $reportedPosts = PostReport::with('post')->select('post_id', \DB::raw('count(*) as report_count'))
+            //     ->with([
+            //         'post' => function ($query) {
+            //             $query->select('id', 'caption', 'post_type', 'profile_id', 'boost_status', 'name_of_interest', 'city')
+            //                 ->with(['postRelatedData' => function ($query) {
+            //                     $query->select('id', 'post_id', 'post_data');
+            //                 }]);
+            //         }
+            //     ])
+            //     ->groupBy('post_id')
+            //     ->get();
+
+            $reportedPosts = PostReport::with([
                 'post' => function ($query) {
-                    $query->select('id', 'caption', 'post_type', 'profile_id', 'boost_status', 'name_of_interest', 'city')
-                        ->with(['postRelatedData' => function ($query) {
-                            $query->select('id', 'post_id', 'post_data');
-                        }]);
-                },
-                'profile' => function ($query) {
-                    $query->select('id', 'user_type_id')
+                    $query->withTrashed()->select('id', 'caption', 'post_type', 'profile_id', 'boost_status', 'name_of_interest', 'city', 'deleted_at')
                         ->with([
-                            'UserDetail' => function ($query) {
-                                $query->select('id', 'full_name', 'profile_id');
-                            },
-                            'communityDetail' => function ($query) {
-                                $query->select('id', 'name_of_community', 'short_description', 'profile_id');
+                            'postRelatedData' => function ($query) {
+                                $query->select('id', 'post_id', 'post_data');
                             }
                         ]);
                 }
-            ])->get();
+            ])
+                ->select('post_id', \DB::raw('count(*) as report_count'))
+                ->groupBy('post_id')
+                ->get();
+
+            // echo"<pre>"; print_r($this->processObject($reportedPosts->toArray()));die;
 
             return response()->json([
                 'code' => 200,
                 'status' => 'success',
                 'message' => 'Reported Post Retrieved Successfully',
-                'data' => $this->processObject($reportedPost),
+                'data' => $this->processObject($reportedPosts),
             ]);
         } catch (\Exception $e) {
-	        return response()->json([
+            return response()->json([
                 'code' => 500,
                 'status' => 'error',
                 'message' => 'An error occurred while processing the request.',
                 'errors' => [$e->getMessage()],
-                'data' => [], 
+                'data' => [],
             ], 500);
-	    }
-
+        }
     }
 
+
+    public function getReportedPost($id)
+    {
+    //   echo $id; die;
+        try {
+            $loggedin_profile_id = auth()->user()->profile->id;
+            $isLiked = PostLike::select('like_flag')->where('profile_id', $loggedin_profile_id)->where('post_id', $id)->first();
+            $post = Post::withTrashed()->find($id);
+
+            if (!$post) {
+                return response()->json([
+                    'code' => 404,
+                    'status' => 'failure',
+                    'message' => 'Post not found',
+                    'data' => [],
+                ], 404);
+            }
+            $post->share = 'https://ishtdevprod.netlify.app/post-share/' . $post->id;
+            $post->isLiked = ($isLiked && $isLiked->like_flag == '1') ? 'true' : 'false';
+
+            $isFollowing = Follows::where('following_profile_id', $loggedin_profile_id)->where('followed_profile_id', $post->profile->id)->first();
+            $post->isFollowing = $isFollowing ? 'true' : 'false';
+
+        
+            $postCreatedAt = $post->created_at;
+            $currentTime = Carbon::now();
+            $timeDifference = $postCreatedAt->diff($currentTime);
+            $totalHours = $timeDifference->h + ($timeDifference->days * 24);
+            if ($totalHours < 1) {
+                $post->timeDifference = $timeDifference->i . 'm';
+            } elseif ($totalHours < 24) {
+                $post->timeDifference = $totalHours . 'h';
+            } elseif ($timeDifference->days < 7) {
+                $post->timeDifference = $timeDifference->days . 'd';
+            } elseif ($timeDifference->days == 7) {
+                $post->timeDifference = '1w';
+            } else {
+                $post->timeDifference = "";
+            }
+            $profile = $this->processObject($post->profile);
+            $user = $this->processObject($post->profile->user);
+            $userType = $this->processObject($post->profile->userType);
+            $userDetail = $this->processObject($post->profile->UserDetail);
+
+            $user->profile_picture = $userDetail->profile_picture ?? null;
+            unset($post->profile->UserDetail);
+
+            $comments = $post->comments ?? null;
+            foreach ($post->comments as $comment) {
+                $comment = $this->processObject($comment);
+                $commentUser = $this->processObject($comment->profile->user);
+                $commentUserDetail = $comment->profile->UserDetail;
+
+                $commentUser->profile_picture = $commentUserDetail->profile_picture ?? null;
+                unset($comment->profile->UserDetail);
+            }
+
+            $findPostimage = $post->postRelatedData ?? null;
+            foreach ($post->postRelatedData as $postRelatedData) {
+                $postRelatedData = $this->processObject($postRelatedData);
+            }
+            $postHashtag = $post->postHashtag ?? null;
+            foreach ($post->postHashtag as $postHashtag) {
+                $postHashtag = $this->processObject($postHashtag);
+                $hashtagName = $this->processObject($postHashtag->hashtag);
+            }
+
+            foreach ($post->postLikes as $like) {
+                $like = $this->processObject($like);
+                $likeUser = $this->processObject($like->profile->user);
+                $likeUserDetail = $like->profile->UserDetail;
+
+                $likeUser->profile_picture = $likeUserDetail->profile_picture ?? null;
+                unset($like->profile->UserDetail);
+            }
+            $postlikeCount = $post->postLikes ?? null;
+            $post->commentCount = $post->comments->count();
+            $post->likeCount = $post->postLikes->count();
+
+            $post->reportCount = $post->postReport->count();
+            $postReport = $post->postReport ?? null;
+            foreach ($post->postReport as $postReport) {
+                $postReport = $this->processObject($postReport);
+            }
+
+            // echo"";print_r($post); die;
+
+            return response()->json([
+                'code' => 200,
+                'status' => 'success',
+                'message' => 'Post retrieved successfully',
+                'data' => [
+                    'post' => $this->processObject($post),
+                ],
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'code' => 500,
+                'status' => 'error',
+                'message' => 'An unexpected error occurred.',
+                'errors' => [$e->getMessage()],
+                'data' => [],
+            ], 500);
+        }
+    }
 }
+

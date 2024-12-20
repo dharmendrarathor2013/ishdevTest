@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Post extends Model
 {
     use HasFactory, SoftDeletes;
-
     protected $table = 'post';
 
     protected $fillable = [
@@ -25,6 +24,7 @@ class Post extends Model
         'boost_status',
         'start_date',
         'end_date',
+        'deleted_by',
     ];
 
     public function profile()

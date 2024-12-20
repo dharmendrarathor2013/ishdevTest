@@ -19,13 +19,13 @@ export default function Amenities() {
     getAmenities();
   }, []);
 
-    const deleteAmenity = (amenity_id) => {
+  const deleteAmenity = (amenity_id) => {
     if (window.confirm('Are you sure you want to delete this amenity?')) {
       setLoading(true);
       axiosClient.delete(`/delete-amenity/${amenity_id}`)
         .then(() => {
           setLoading(false);
-          getAmenities(); 
+          getAmenities();
         })
         .catch(() => {
           setLoading(false);
@@ -33,6 +33,12 @@ export default function Amenities() {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === '-' || e.key === 'e') {
+      e.preventDefault();
+    }
+  };
+  
   const handleJumpToPage = () => {
     const page = parseInt(jumpToPage, 10);
     if (page >= 1 && page <= totalPages) {
@@ -42,7 +48,7 @@ export default function Amenities() {
       setErrorMessage(`Page number ${page} is out of range. Please enter a number between 1 and ${totalPages}.`);
     }
   };
-  
+
   const getAmenities = () => {
     setLoading(true);
     axiosClient.get('/get-amenities')
@@ -61,9 +67,9 @@ export default function Amenities() {
   const currentItems = searchResults.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(searchResults.length / itemsPerPage);
 
-    const navigate = useNavigate();
+  const navigate = useNavigate();
 
-    const handleClick = () => {
+  const handleClick = () => {
     navigate('/create-amenity');
   };
 
@@ -108,10 +114,10 @@ export default function Amenities() {
                   <td>{b?.amenity_name}</td>
                   <td>
                     <Link className="btn-custom mr-3" to={'/edit-amenity/' + b.id}>Edit</Link>
-                    <a href="#"  className="btn-custom" onClick={(e) => {
-                        e.preventDefault();
-                        deleteAmenity(b.id);
-                      }}
+                    <a href="#" className="btn-custom" onClick={(e) => {
+                      e.preventDefault();
+                      deleteAmenity(b.id);
+                    }}
                     >
                       <FontAwesomeIcon icon={faTrash} />
                     </a>
@@ -147,16 +153,17 @@ export default function Amenities() {
             type="number"
             value={jumpToPage}
             onChange={(e) => setJumpToPage(e.target.value)}
-            placeholder="Enter page number" className="form-control"
+            className="form-control"
+            min="0"
+            onKeyDown={handleKeyDown}
           />
-          <button onClick={handleJumpToPage}>Jump to Page</button>
+          <button className='btn-custom' onClick={handleJumpToPage}>Jump to Page</button>
+          {errorMessage && (
+            <div className="pagination-error">
+              {errorMessage}
+            </div>
+          )}
         </div>
-
-        {errorMessage && (
-          <div className="pagination-error">
-            {errorMessage}
-          </div>
-        )}
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import TableHeadLayout from "../componenets/TableHeadLayout.jsx";
 
 export default function GreenTick() {
- const [Pandit, setPandit] = useState([]);
+  const [Pandit, setPandit] = useState([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [jumpToPage, setJumpToPage] = useState("");
@@ -25,6 +25,12 @@ export default function GreenTick() {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === '-' || e.key === 'e') {
+      e.preventDefault();
+    }
+  };
+  
   const getPandit = () => {
     setLoading(true);
     axiosClient
@@ -47,10 +53,10 @@ export default function GreenTick() {
 
   function capitalizeFirstLetter(string) {
     if (string && string.length > 0) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
-  } else {
-    return string; 
-  }
+      return string.charAt(0).toUpperCase() + string.slice(1);
+    } else {
+      return string;
+    }
   }
 
   return (
@@ -88,12 +94,12 @@ export default function GreenTick() {
                         c.verification_status === "approved"
                           ? "green"
                           : c.verification_status === "pending"
-                          ? "#ffdc09"
-                          : c.verification_status === "rejected"
-                          ? "orange"
-                          : c.verification_status === "block"
-                          ? "red"
-                          : "inherit",
+                            ? "#ffdc09"
+                            : c.verification_status === "rejected"
+                              ? "orange"
+                              : c.verification_status === "block"
+                                ? "red"
+                                : "inherit",
                     }}
                   >
                     {capitalizeFirstLetter(c.verification_status)}
@@ -111,9 +117,8 @@ export default function GreenTick() {
         </table>
         <div className="pagination">
           <button
-            className={`btn-pagination paginationButton ${
-              currentPage === 1 ? "disabled" : ""
-            }`}
+            className={`btn-pagination paginationButton ${currentPage === 1 ? "disabled" : ""
+              }`}
             onClick={() => paginate(currentPage - 1)}
             disabled={currentPage === 1}
           >
@@ -127,9 +132,8 @@ export default function GreenTick() {
             of {totalPages}
           </span>
           <button
-            className={`btn-pagination paginationButton ${
-              currentPage === totalPages ? "disabled" : ""
-            }`}
+            className={`btn-pagination paginationButton ${currentPage === totalPages ? "disabled" : ""
+              }`}
             onClick={() => paginate(currentPage + 1)}
             disabled={currentPage === totalPages}
           >
@@ -141,16 +145,17 @@ export default function GreenTick() {
             type="number"
             value={jumpToPage}
             onChange={(e) => setJumpToPage(e.target.value)}
-            placeholder="Enter page number" className="form-control"
+            className="form-control"
+            min="0"
+            onKeyDown={handleKeyDown}
           />
-          <button onClick={handleJumpToPage}>Jump to Page</button>
+          <button className='btn-custom' onClick={handleJumpToPage}>Jump to Page</button>
+          {errorMessage && (
+            <div className="pagination-error">
+              {errorMessage}
+            </div>
+          )}
         </div>
-
-        {errorMessage && (
-          <div className="pagination-error">
-            {errorMessage}
-          </div>
-        )}
       </div>
     </div>
   );

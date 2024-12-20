@@ -27,6 +27,12 @@ export default function Business() {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === '-' || e.key === 'e') {
+      e.preventDefault();
+    }
+  };
+
   const getBusiness = () => {
     setLoading(true);
     axiosClient.get('/showAllBusiness')
@@ -48,6 +54,7 @@ export default function Business() {
   const paginate = pageNumber => setCurrentPage(pageNumber);
 
   function capitalizeFirstLetter(string) {
+    if (!string) return '';
     return string.charAt(0).toUpperCase() + string.slice(1);
   }
 
@@ -123,16 +130,17 @@ export default function Business() {
             type="number"
             value={jumpToPage}
             onChange={(e) => setJumpToPage(e.target.value)}
-            placeholder="Enter page number" className="form-control"
+            className="form-control"
+            min="0"
+            onKeyDown={handleKeyDown}
           />
-          <button onClick={handleJumpToPage}>Jump to Page</button>
+          <button className='btn-custom' onClick={handleJumpToPage}>Jump to Page</button>
+          {errorMessage && (
+            <div className="pagination-error">
+              {errorMessage}
+            </div>
+          )}
         </div>
-
-        {errorMessage && (
-          <div className="pagination-error">
-            {errorMessage}
-          </div>
-        )}
       </div>
     </div>
   );

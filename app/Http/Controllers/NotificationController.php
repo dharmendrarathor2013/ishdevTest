@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Appy\FcmHttpV1\FcmTopicHelper;
 use App\Models\CommunityBadge;
 use App\Models\CommunityDetail;
 use App\Models\CommunityHistory;
@@ -11,6 +12,7 @@ use App\Models\PostData;
 use App\Models\Profile;
 use App\Models\User;
 use App\Models\UserCheckIn;
+use Exception;
 use Google\Client as GoogleClient;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
@@ -33,24 +35,8 @@ class NotificationController extends Controller
 
     public function createChannel($communityName, $registrationTokens)
     {
-
-        $to = "/topics/$communityName";
-        $body = [
-            'to' => $to,
-            'registration_tokens' => $registrationTokens,
-        ];
-        $bodyJson = json_encode($body);
-        $headers = [
-            'Content-Type' => 'application/json',
-            'Authorization' => 'key=AAAAPtLGuM0:APA91bFJ7fP6ntGULVnWEDvOiaX2bx3wRI_2F2BmC8MJpD2OQxwzjLXoXwPQgE-NUJzIS1aSH5AUsknzhFdpcWL6toa9GNLKDctr_EggKo9vipBLminPm5o61dYLPVD8qLb6qFev_5jb',
-        ];
-        $client = new Client();
         try {
-            $response = $client->post('https://iid.googleapis.com/iid/v1:batchAdd', [
-                'headers' => $headers,
-                'body' => $bodyJson,
-            ]);
-            return $response->getBody();
+            FcmTopicHelper::subscribeToTopic($registrationTokens, $communityName);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
@@ -58,24 +44,25 @@ class NotificationController extends Controller
 
     public function removeDevice($communityName, $registrationTokens)
     {
-        $to = "/topics/$communityName";
-        $body = [
-            'to' => $to,
-            'registration_tokens' => $registrationTokens,
-        ];
-        $bodyJson = json_encode($body);
-        $headers = [
-            'Content-Type' => 'application/json',
-            'Authorization' => 'key=AAAAPtLGuM0:APA91bFJ7fP6ntGULVnWEDvOiaX2bx3wRI_2F2BmC8MJpD2OQxwzjLXoXwPQgE-NUJzIS1aSH5AUsknzhFdpcWL6toa9GNLKDctr_EggKo9vipBLminPm5o61dYLPVD8qLb6qFev_5jb',
-        ];
-        $client = new Client();
+        // $to = "/topics/$communityName";
+        // $body = [
+        //     'to' => $to,
+        //     'registration_tokens' => $registrationTokens,
+        // ];
+        // $bodyJson = json_encode($body);
+        // $headers = [
+        //     'Content-Type' => 'application/json',
+        //     'Authorization' => 'key=AAAAPtLGuM0:APA91bFJ7fP6ntGULVnWEDvOiaX2bx3wRI_2F2BmC8MJpD2OQxwzjLXoXwPQgE-NUJzIS1aSH5AUsknzhFdpcWL6toa9GNLKDctr_EggKo9vipBLminPm5o61dYLPVD8qLb6qFev_5jb',
+        // ];
+        // $client = new Client();
 
         try {
-            $response = $client->post('https://iid.googleapis.com/iid/v1:batchRemove', [
-                'headers' => $headers,
-                'body' => $bodyJson,
-            ]);
-            return $response->getBody();
+            // $response = $client->post('https://iid.googleapis.com/iid/v1:batchRemove', [
+            //     'headers' => $headers,
+            //     'body' => $bodyJson,
+            // ]);
+            // return $response->getBody();
+            FcmTopicHelper::unsubscribeToTopic($registrationTokens, $communityName);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
@@ -158,19 +145,25 @@ class NotificationController extends Controller
     public function sendNotificationToOne($to, $notification, $data)
     {
         $credentialsFilePath = public_path('firebase/fcm.json');
-        // Initialize Google Client
+        if (!file_exists($credentialsFilePath)) {
+            throw new Exception('Service account credentials file not found at ' . $credentialsFilePath);
+        }
+
         $client = new GoogleClient();
         $client->setAuthConfig($credentialsFilePath);
         $client->addScope('https://www.googleapis.com/auth/firebase.messaging');
-
         // Fetch access token
         $token = $client->fetchAccessTokenWithAssertion();
+
+        // $client->refreshTokenWithAssertion();
+        // $token = $client->getAccessToken();
+        $access_token = $token['access_token'];
+
         if (isset($token['error'])) {
             return response()->json(['error' => $token['error']], 500);
         }
         $accessToken = $token['access_token'];
 
-        // Set API URL for sending messages
         $apiUrl = 'https://fcm.googleapis.com/v1/projects/' . env('FIREBASE_PROJECT_ID') . '/messages:send';
 
         // Prepare notification payload
@@ -181,14 +174,14 @@ class NotificationController extends Controller
                 'data' => $data,
             ],
         ];
-      
+
         // Make HTTP POST request to FCM API
         try {
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $accessToken,
                 'Content-Type' => 'application/json',
             ])->post($apiUrl, $message);
-            
+
             // Return the response
             return $response->json();
         } catch (\Exception $e) {
@@ -216,6 +209,7 @@ class NotificationController extends Controller
 
         // Fetch access token
         try {
+
             $token = $client->fetchAccessTokenWithAssertion();
             if (isset($token['error'])) {
                 return response()->json(['error' => $token['error']], 500);
@@ -255,6 +249,7 @@ class NotificationController extends Controller
             ])->post($apiUrl, $message);
 
             // Return the response
+
             return $response->json();
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
@@ -293,7 +288,7 @@ class NotificationController extends Controller
             $post->profile_id = $validatedData['profile_id'];
             $post->save();
             $id = $post->id;
-
+ 	    $postDataCreate = null;
             if ($request->hasFile('post_data')) {
                 foreach ($request->file('post_data') as $image) {
                     $imageName = time() . '_' . $image->getClientOriginalName();
@@ -343,7 +338,7 @@ class NotificationController extends Controller
                     'message' => 'Community Does Not Exist',
                 ], 404);
             }
-            $communityDetail = CommunityDetail::select('name_of_community')->where("profile_id", $validatedData['profile_id'])->first();
+            $communityDetail = CommunityDetail::select('id as community_id','name_of_community')->where("profile_id", $validatedData['profile_id'])->first();
             $notificationController = new NotificationController();
             $communityName = str_replace(' ', '', $communityDetail['name_of_community']);
             $baseUrl = URL::to('/');
@@ -354,15 +349,17 @@ class NotificationController extends Controller
                 "title" => $validatedData['title'],
                 "body" => $validatedData['body'],
             ];
+
             $data = [
                 "url" => $posturl,
                 "message_body" => $validatedData['message_body'],
                 "contentType" => $contectType,
                 "source" => "Ishtdev",
-                "notication" => "true",
+                "notication" => (string) $validatedData['profile_id'],
             ];
+            // echo"<pre>"; print_r($data); die;
             $response = $notificationController->sendNotificationToAll($communityName, $notification, $data);
-            //echo $response;die();
+            // echo"<pre>"; print_r($response); die;
             //--------notify with post end---------
             $findPost->notification = $notification;
             $findPost->message_body = $data['message_body'];
@@ -450,7 +447,7 @@ class NotificationController extends Controller
                 "source" => "CheckIn",
             ];
             $response = $chechInNotification->sendNotificationToOne($to, $notification, $data);
-           
+
         }
 
         if ($communityHistory) {

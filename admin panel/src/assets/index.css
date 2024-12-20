@@ -267,7 +267,7 @@ table>tbody>tr>td {
 
 .bg-image {
     background-image: url(/public/bg-image.png);
-    height: 100vh;
+    min-height: 100vh;
 }
 
 .login-signup-form .title {
@@ -552,7 +552,7 @@ table>tbody>tr>td {
 }
 
 .jump-to-page input {
-    width: 15%;
+    width: 7%;
     display: inline;
     margin-right: 5px !important;
     padding: .375rem .75rem;
@@ -568,8 +568,17 @@ table>tbody>tr>td {
     transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
 }
 
+/* .jump-to-page button{
+    max-height: fit-content;
+} */
+
 .pagination-error {
     color: red;
     margin-top: 10px;
     text-align: center;
+}
+
+.amenity-logo {
+    width: 100px;
+    height: 100px;
 }

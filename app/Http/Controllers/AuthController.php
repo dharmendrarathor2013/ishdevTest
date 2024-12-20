@@ -11,9 +11,10 @@ use App\Models\MobileOtps;
 use App\Models\Post;
 use App\Models\Profile;
 use App\Models\User;
+use App\Models\UserCheckIn;
 use App\Models\UserDetails;
 use Carbon\Carbon;
-use DB;
+// use DB;
 use File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,6 +25,7 @@ use SendGrid\Mail\Mail;
 use SendGrid\Mail\To;
 use URL;
 use Validator;
+use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
@@ -242,7 +244,6 @@ class AuthController extends Controller
                     'data' => (object) [],
                 ]);
             }
-
             $findUser = User::where('mobile_number', $userOtp->mobile_number)->first();
             $jwtToken = null;
             $userId = '';
@@ -298,7 +299,6 @@ class AuthController extends Controller
                 'message' => 'OTP Verified Successfully',
                 'data' => $responseData,
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'code' => 500,
@@ -506,7 +506,9 @@ class AuthController extends Controller
     public function update(Request $request)
     {
         try {
-            // echo"<pre>"; print_r($request->all()); die;
+            // echo "<pre>";
+            // print_r($request->all());
+            // die;
             $UserDetails = UserDetails::where('profile_id', $request->profile_id)->first();
             $addressDetails = Address::where('profile_id', $request->profile_id)->first();
             $ProfileDetails = Profile::where('id', $request->profile_id)->first();
@@ -521,32 +523,40 @@ class AuthController extends Controller
             $device_key = '';
             $device_key = User::select('device_key')->where('id', $UserDetails['id'])->first();
             $validatedData = $request->all();
-            $userDetailsData['verification_status'] = isset($validatedData['verification_status']) ? $validatedData['verification_status'] : 
-                                                    ($request->has('verification_status') ? $request->input('verification_status') : $UserDetails['verification_status']);
-            if($request->has('verification_status')){               
+            $userDetailsData['verification_status'] = isset($validatedData['verification_status']) ? $validatedData['verification_status'] : ($request->has('verification_status') ? $request->input('verification_status') : $UserDetails['verification_status']);
 
-                if($validatedData['verification_status'] == 'approved' || $validatedData['verification_status'] == 'rejected'){
-                    $chechInNotification = new NotificationController();
-                    $to = $device_key['device_key'];
-                    $notification = [
-                        "title" => 'Ishtdev Notification',
-                        "body" => 'Your Application is ' . $request->input('verification_status'),
-                    ];
-                    $data = [
-                        "notication" => "true",
-                        "source" => "CheckIn",
-                    ];
-                    $response = $chechInNotification->sendNotificationToOne($to, $notification, $data);
+
+            // die;
+            if (isset($validatedData['user_notification']) && $validatedData['user_notification'] == 1) {
+                if ($request->has('verification_status')) {
+
+                    if ($validatedData['verification_status'] == 'approved' || $validatedData['verification_status'] == 'rejected') {
+                        $chechInNotification = new NotificationController();
+                        $to = $device_key['device_key'];
+                        $notification = [
+                            "title" => 'Ishtdev Notification',
+                            "body" => 'Your Verification Request is ' . $validatedData['verification_status'] . '.',
+                        ];
+                        $data = [
+                            "notication" => "true",
+                            "source" => "CheckIn",
+                        ];
+                        $response = $chechInNotification->sendNotificationToOne($to, $notification, $data);
+                    }
+                } else {
+                    // die("else");
+                    $userDetailsData['verification_status'] = 'pending';
                 }
             }
-            $userDetailsData['register_business_name'] = isset($validatedData['register_business_name']) || $request->has('register_business_name') ? $validatedData['register_business_name'] :  $UserDetails['register_business_name'];
+            // die("out");
+            $userDetailsData['register_business_name'] = isset($validatedData['register_business_name']) || $request->has('register_business_name') ? $validatedData['register_business_name'] : $UserDetails['register_business_name'];
             $userDetailsData['verified'] = ($userDetailsData['verification_status'] == 'approved') ? 'true' : 'false';
-            $userDetailsData['invalidate_reason'] = isset($validatedData['invalidate_reason']) || $request->has('invalidate_reason') ? $validatedData['invalidate_reason'] :  $UserDetails['invalidate_reason'];
-            $userDetailsData['full_name'] = isset($validatedData['full_name']) || $request->has('full_name') ? $validatedData['full_name'] :  $UserDetails['full_name'];
-            $userDetailsData['email'] = isset($validatedData['email']) || $request->has('email') ? $validatedData['email'] :  $UserDetails['email'];
+            $userDetailsData['invalidate_reason'] = isset($validatedData['invalidate_reason']) || $request->has('invalidate_reason') ? $validatedData['invalidate_reason'] : $UserDetails['invalidate_reason'];
+            $userDetailsData['full_name'] = isset($validatedData['full_name']) || $request->has('full_name') ? $validatedData['full_name'] : $UserDetails['full_name'];
+            $userDetailsData['email'] = isset($validatedData['email']) || $request->has('email') ? $validatedData['email'] : $UserDetails['email'];
             $userDetailsData['religion'] = isset($validatedData['religion']) || $request->has('religion') ? $validatedData['religion'] : $UserDetails['religion'];
             $userDetailsData['varna'] = isset($validatedData['varna']) || $request->has('varna') ? $validatedData['varna'] : $UserDetails['varna'];
-            $userDetailsData['gotra'] = isset($validatedData['gotra']) || $request->has('gotra') ? $validatedData['gotra'] : $UserDetails['gotra'] ;
+            $userDetailsData['gotra'] = isset($validatedData['gotra']) || $request->has('gotra') ? $validatedData['gotra'] : $UserDetails['gotra'];
             $userDetailsData['ishtdev'] = isset($validatedData['ishtdev']) || $request->has('ishtdev') ? $validatedData['ishtdev'] : $UserDetails['ishtdev'];
             $userDetailsData['dob'] = isset($validatedData['dob']) || $request->has('dob') ? $validatedData['dob'] : $UserDetails['dob'];
             $userDetailsData['kul_devta_devi'] = isset($validatedData['kul_devta_devi']) || $request->has('kul_devta_devi') ? $validatedData['kul_devta_devi'] : $UserDetails['kul_devta_devi'];
@@ -556,11 +566,21 @@ class AuthController extends Controller
             $userDetailsData['speciality_pooja'] = isset($validatedData['speciality_pooja']) || $request->has('speciality_pooja') ? $validatedData['speciality_pooja'] : $UserDetails['speciality_pooja'];
             $userDetailsData['pravara'] = isset($validatedData['pravara']) || $request->has('pravara') ? $validatedData['pravara'] : $UserDetails['pravara'];
             $userDetailsData['ved'] = isset($validatedData['ved']) || $request->has('ved') ? $validatedData['ved'] : $UserDetails['ved'];
-            $userDetailsData['upved'] = isset($validatedData['upved']) || $request->has('upved') ? $validatedData['upved'] : $UserDetails['upved'] ;
+            $userDetailsData['upved'] = isset($validatedData['upved']) || $request->has('upved') ? $validatedData['upved'] : $UserDetails['upved'];
             $userDetailsData['charanas'] = isset($validatedData['charanas']) || $request->has('charanas') ? $validatedData['charanas'] : $UserDetails['charanas'];
             $userDetailsData['mukha'] = isset($validatedData['mukha']) || $request->has('mukha') ? $validatedData['mukha'] : $UserDetails['mukha'];
             $userDetailsData['become_pandit'] = isset($validatedData['become_pandit']) || $request->has('become_pandit') ? $validatedData['become_pandit'] : $UserDetails['become_pandit'];
             $userDetailsData['make_profile_private'] = isset($validatedData['make_profile_private']) || $request->has('make_profile_private') ? $validatedData['make_profile_private'] : $UserDetails['make_profile_private'];
+
+            // if ((isset($validatedData['make_profile_private']) || $request->has('make_profile_private')) && ($validatedData['make_profile_private'] === 'manual')) {
+
+            //     $userDetailsData['is_requesting'] = 'true';
+            // } else {
+            //     if ((isset($validatedData['make_profile_private']) || $request->has('make_profile_private')) && !empty($validatedData['make_profile_private'])) {
+
+            //         $userDetailsData['is_requesting'] = 'false';
+            //     }
+            // }
 
             $addressDetailsData['street'] = isset($validatedData['street']) || $request->has('street') ? $validatedData['street'] : $addressDetails['street'];
             $addressDetailsData['city'] = isset($validatedData['city']) || $request->has('city') ? $validatedData['city'] : $addressDetails['city'];
@@ -568,7 +588,7 @@ class AuthController extends Controller
             $addressDetailsData['postal_code'] = isset($validatedData['postal_code']) || $request->has('postal_code') ? $validatedData['postal_code'] : $addressDetails['postal_code'];
             $addressDetailsData['country'] = isset($validatedData['country']) || $request->has('country') ? $validatedData['country'] : $addressDetails['country'];
 
-            
+
             // convert to business
 
             $userDetailsData['is_business_profile'] = (
@@ -581,29 +601,32 @@ class AuthController extends Controller
                 $userDetailsData['business_verification_status'] = $validatedData['business_verification_status'];
             }
 
-            if (isset($validatedData['business_verification_status']) &&
+            if (
+                isset($validatedData['business_verification_status']) &&
                 $request->has('business_verification_status') &&
-                $validatedData['business_verification_status'] === 'rejected') {
+                $validatedData['business_verification_status'] === 'rejected'
+            ) {
                 $userDetailsData['business_invalidate_reason'] = $validatedData['business_invalidate_reason'];
             }
+            if (isset($validatedData['business_notification']) && $validatedData['business_notification'] == 1) {
+                if (isset($validatedData['business_verification_status']) && $request->has('business_verification_status')) {
 
-            if (isset($validatedData['business_verification_status']) && $request->has('business_verification_status')) {
-
-                if ($validatedData['business_verification_status'] === 'approved' || $validatedData['business_verification_status'] === 'rejected') {
-                    $chechInNotification = new NotificationController();
-                    $to = $device_key['device_key'];
-                    $notification = [
-                        "title" => 'Ishtdev Notification',
-                        "body" => 'Your Application is ' . $request->input('business_verification_status'),
-                    ];
-                    $notificationData = [
-                        "notication" => "true",
-                        "source" => "CheckIn",
-                    ];
-                    $response = $chechInNotification->sendNotificationToOne($to, $notification, $notificationData);
+                    if ($validatedData['business_verification_status'] === 'approved' || $validatedData['business_verification_status'] === 'rejected') {
+                        $chechInNotification = new NotificationController();
+                        $to = $device_key['device_key'];
+                        $notification = [
+                            "title" => 'Ishtdev Notification',
+                            "body" => 'Your Business Verification Request is ' . $request->input('business_verification_status') . '.',
+                        ];
+                        $notificationData = [
+                            "notication" => "true",
+                            "source" => "CheckIn",
+                        ];
+                        $response = $chechInNotification->sendNotificationToOne($to, $notification, $notificationData);
+                    }
                 }
             }
-            
+
             $userDetailsData['business_city'] = $validatedData['business_city'] ?? $UserDetails['business_city'] ?? null;
             $userDetailsData['business_state'] = $validatedData['business_state'] ?? $UserDetails['business_state'] ?? null;
             $userDetailsData['business_pincode'] = $validatedData['business_pincode'] ?? $UserDetails['business_pincode'] ?? null;
@@ -611,7 +634,9 @@ class AuthController extends Controller
             $userDetailsData['business_name'] = $validatedData['business_name'] ?? $UserDetails['business_name'] ?? null;
             $userDetailsData['gst_number'] = $validatedData['gst_number'] ?? $UserDetails['gst_number'] ?? null;
             $userDetailsData['business_address'] = $validatedData['business_address'] ?? $UserDetails['business_address'] ?? null;
-
+            // echo "<pre>";
+            // print_r($userDetailsData);
+            // die;
             if ($request->hasFile('business_doc')) {
                 $file = $request->file('business_doc');
                 $filename = $file->getClientOriginalName();
@@ -620,7 +645,7 @@ class AuthController extends Controller
 
                 if (isset($userDetailsData['business_doc']) && $device_key) {
                     $chechInNotification = new NotificationController();
-                    $to = $device_key;
+                    $to = $device_key['device_key'];
                     $notification = [
                         "title" => 'Ishtdev Notification',
                         "body" => 'Business document has been uploaded, please wait for approval',
@@ -629,10 +654,10 @@ class AuthController extends Controller
                         "notication" => "true",
                         "source" => "CheckIn",
                     ];
+
                     $response = $chechInNotification->sendNotificationToOne($to, $notification, $data);
                     // echo"<pre>"; print_r($response); die;
                 }
-
             }
             // end convert to business
 
@@ -655,19 +680,21 @@ class AuthController extends Controller
                     $userDetailsData['doc_back'] = $validatedData['doc_back'] = 'images/' . $filename;
                 }
 
-                // $device_key = User::select('device_key')->where('id', $UserDetails['id'])->first();
-                $chechInNotification = new NotificationController();
-                $to = $device_key['device_key'];
-                $notification = [
-                    "title" => 'Documents is Uploded successfully',
-                    "body" => 'Will get back to you after Verification',
-                ];
-                $data = [
-                    "notication" => "true",
-                    "source" => "CheckIn",
-                ];
-                $response = $chechInNotification->sendNotificationToOne($to, $notification, $data);
+                $device_key = User::select('device_key')->where('id', $UserDetails['id'])->first();
 
+                // $chechInNotification = new NotificationController();
+                // $to = $device_key['device_key'];
+
+                // $notification = [
+                //     "title" => 'Documents is Uploded successfully',
+                //     "body" => 'Will get back to you after Verification',
+                // ];
+                // $data = [
+                //     "notication" => "true",
+                //     "source" => "CheckIn",
+                // ];
+                // $response = $chechInNotification->sendNotificationToOne($to, $notification, $data);
+                //print_r($response);die();
             }
 
             if ($userDetailsData['become_pandit'] == "approved") {
@@ -678,19 +705,19 @@ class AuthController extends Controller
             if ($request->hasFile('profile_picture')) {
                 $file = $request->file('profile_picture');
                 $filename = $file->getClientOriginalName();
-                $file->move(base_path().'/public/images/', $filename);
+                $file->move(base_path() . '/public/images/', $filename);
                 $userDetailsData['profile_picture'] = $validatedData['profile_picture'] = 'images/' . $filename;
             }
             if ($request->hasFile('kyc_details_doc01')) {
                 $file = $request->file('kyc_details_doc01');
                 $filename = $file->getClientOriginalName();
-                $file->move(base_path().'/public/kycdocument/', $filename);
+                $file->move(base_path() . '/public/kycdocument/', $filename);
                 $userDetailsData['kyc_details_doc01'] = $validatedData['kyc_details_doc01'] = 'kycdocument/' . $filename;
             }
             if ($request->hasFile('kyc_details_doc02')) {
                 $file = $request->file('kyc_details_doc02');
                 $filename = $file->getClientOriginalName();
-                $file->move(base_path().'/public/kycdocument/', $filename);
+                $file->move(base_path() . '/public/kycdocument/', $filename);
                 $userDetailsData['kyc_details_doc02'] = $validatedData['kyc_details_doc02'] = 'kycdocument/' . $filename;
             }
             // echo"<pre>"; print_r($userDetailsData); die;
@@ -713,6 +740,7 @@ class AuthController extends Controller
             ], 500);
         }
     }
+
 
     /**
      * Display the details of a profile with the given profile_id.
@@ -766,8 +794,16 @@ class AuthController extends Controller
      */
     public function show(Request $request)
     {
+
+        // die('hhh');
         try {
+            $loggedprofileID = auth()->user()->profile->id;
+            $followingRequestData = Follows::where('following_profile_id', $request->profile_id)->where('followed_profile_id', $loggedprofileID)->first();
+
             $userTypeId = Profile::select('user_type_id')->where('id', $request->profile_id)->first();
+            // echo"<pre>"; print_r($userTypeId->toArray()); die;
+            $postCount = Post::where('profile_id', $request->profile_id)->where('status', 1)->count();
+
             if (!$userTypeId) {
                 return response()->json([
                     'code' => 404,
@@ -780,6 +816,10 @@ class AuthController extends Controller
                 $userId = Profile::select('user_id')->where('id', $request->profile_id)->first();
                 $UserDetails = User::where('id', $userId['user_id'])->get();
                 $UserDetail = UserDetails::where('profile_id', $request->profile_id)->first();
+
+                $UserDetail['request_status'] = $followingRequestData ? $followingRequestData->request_status : null;
+                $UserDetail['is_approved'] = $followingRequestData ? $followingRequestData->request_status : null;
+
                 $userId = Profile::select('user_id')->where('id', $request->profile_id)->first();
                 $isfollow = Follows::where('following_profile_id', auth()->user()->profile->id)
                     ->where('followed_profile_id', $request->profile_id)
@@ -787,6 +827,7 @@ class AuthController extends Controller
                 $countFollow = Follows::where('following_profile_id', $request->profile_id)->count();
                 $countFollowing = Follows::where('followed_profile_id', $request->profile_id)->count();
                 $postCount = Post::where('profile_id', $request->profile_id)->count();
+
                 $getuserType = Profile::select('name')
                     ->join('user_type as ut', 'profile.user_type_id', '=', 'ut.id')
                     ->where('profile.id', $request->profile_id)
@@ -810,6 +851,10 @@ class AuthController extends Controller
                 ]);
             } elseif ($userTypeId['user_type_id'] == "2") {
                 $UserDetails = UserDetails::where('profile_id', $request->profile_id)->first();
+
+                $UserDetails['request_status'] = $followingRequestData ? $followingRequestData->request_status : null;
+                $UserDetails['is_approved'] = $followingRequestData ? $followingRequestData->request_status : null;
+
                 $address = $this->processObject($UserDetails->address->address) ?? null;
                 $getUserId = Profile::where('id', $request->profile_id)->first();
                 $userId = $getUserId->user_id;
@@ -854,6 +899,7 @@ class AuthController extends Controller
                     ]);
                 }
             } elseif ($userTypeId['user_type_id'] == "3") {
+
                 $CommunityDetails = CommunityDetail::where('profile_id', $request->profile_id)->get();
 
                 if (!$CommunityDetails) {
@@ -879,6 +925,10 @@ class AuthController extends Controller
                 $userTypename = $getuserType->name;
                 $communityData = $CommunityDetails->first();
                 $liveArtiUrl = CommunityArti::where('community_detail_id', $communityData->id)->first()->live_arti_link ?? null;
+
+
+                $visitCount = UserCheckIn::where('community_id', $communityData->id)->count();
+                // echo"<pre>"; print_r($visitCount); die;
 
                 return response()->json([
                     'code' => 200,
@@ -907,7 +957,7 @@ class AuthController extends Controller
                         'postCount' => $postCount,
                         'userTypename' => $userTypename,
                         'loggedIn' => auth()->user()->id == $userId ? "true" : "false",
-                        'visitCount' => 0,
+                        'visitCount' => $visitCount,
                         'donationCount' => 0,
                     ),
                 ]);
@@ -925,8 +975,18 @@ class AuthController extends Controller
 
     public function showProfile($profile_id)
     {
+        // echo"hello"; echo $profile_id; die;
         try {
+
+            $loggedprofileID = auth()->user()->profile->id;
+            $followingRequestData = Follows::where('following_profile_id', $profile_id)->where('followed_profile_id', $loggedprofileID)->first();
+            // echo "<pre>";
+            // print_r($followingRequestData);
+            // die;
+
             $userTypeId = Profile::select('user_type_id')->where('id', $profile_id)->first();
+
+
             if (!$userTypeId) {
                 return response()->json([
                     'code' => 404,
@@ -939,6 +999,9 @@ class AuthController extends Controller
                 $userId = Profile::select('user_id')->where('id', $profile_id)->first();
                 $UserDetails = User::where('id', $userId['user_id'])->get();
                 $UserDetail = UserDetails::where('profile_id', $profile_id)->first();
+                $UserDetail['request_status'] = $followingRequestData ? $followingRequestData->request_status : 'NULL';
+                $UserDetail['is_approved'] = $followingRequestData ? $followingRequestData->request_status : 'NULL';
+
                 $userId = Profile::select('user_id')->where('id', $profile_id)->first();
                 $countFollow = Follows::where('following_profile_id', $profile_id)->count();
                 $countFollowing = Follows::where('followed_profile_id', $profile_id)->count();
@@ -964,6 +1027,10 @@ class AuthController extends Controller
                 ]);
             } elseif ($userTypeId['user_type_id'] == "2") {
                 $UserDetails = UserDetails::where('profile_id', $profile_id)->first();
+
+                $UserDetails['request_status'] = $followingRequestData ? $followingRequestData->request_status : 'NULL';
+                $UserDetails['is_approved'] = $followingRequestData ? $followingRequestData->request_status : 'NULL';
+
                 $address = $this->processObject($UserDetails->address->address) ?? null;
                 $getUserId = Profile::where('id', $profile_id)->first();
                 $userId = $getUserId->user_id;
@@ -1479,6 +1546,8 @@ class AuthController extends Controller
      */
     public function follow($profileID)
     {
+        // echo"<pre>"; print_r($profileID); die;
+
         try {
             $profile_id = auth()->user()->profile->id;
             $following_user_details = User::where('id', auth()->user()->id)->first();
@@ -1506,18 +1575,62 @@ class AuthController extends Controller
                         // echo $response;die();
                         //-------follow community channel end----------
                     }
-
                 }
             } elseif ($user_type_id['user_type_id'] == 1 || $user_type_id['user_type_id'] == 2) {
                 $userToFollowId = Profile::select('user_id')->where('id', $profileID)->first();
                 $followed_user_details = User::where('id', $userToFollowId['user_id'])->first();
             }
+            // $profileID [
+            //     'make_profile_private' => 'Yes',
+            //     'is_approved' => 'pending',
+            //     'request_status' => 'true',
+            //     'created_at' => now(), // Optional, for timestamp
+            // ],
+
+
             auth()->user()->profile->following()->syncWithoutDetaching($profileID);
 
+            $toFollowUserDetails = UserDetails::where('profile_id', $profileID)->first();
+
+            // $followsTemp =  Follows::where('followed_profile_id', $profileID)->where('following_profile_id', $profile_id)->first();
+            // echo "<pre>";
+            // print_r($toFollowUserDetails->toArray());
+            // die;
+
+            if ($toFollowUserDetails['make_profile_private'] === 'Manual') {
+
+                DB::table('follows')
+                    ->where('following_profile_id', $profile_id)
+                    ->where('followed_profile_id', $profileID)
+                    ->update([
+                        'make_profile_private' => $toFollowUserDetails['make_profile_private'],
+                        'is_approved' => 'pending',
+                        'request_status' => 'false',
+                    ]);
+            } else {
+
+                DB::table('follows')
+                    ->where('following_profile_id', $profile_id)
+                    ->where('followed_profile_id', $profileID)
+                    ->update([
+                        'make_profile_private' => $toFollowUserDetails['make_profile_private'],
+                        'is_approved' => 'approved',
+                        'request_status' => 'true',
+                    ]);
+            }
+
+            // if (isset($toFollowUserDetails['make_profile_private']) && ($toFollowUserDetails['make_profile_private'] === 'Yes' || $toFollowUserDetails['make_profile_private'] === 'No')) {
+            //     // $isFollowingUserDetails = UserDetails::where('profile_id', $profile_id)->first();
+            //     // $temp['isUserProfileStatus'] = "True";
+            //     // $isFollowingUserDetails->update($temp);
+            // }
+            //    echo"<pre>"; print_r($isFollowingUserDetails); die;
             return response()->json([
                 'status' => 'success',
-                'user' => array("following_profile_details" => $this->processObject($following_user_details),
-                    "followed_profile_details" => $this->processObject($followed_user_details)),
+                'user' => array(
+                    "following_profile_details" => $this->processObject($following_user_details),
+                    "followed_profile_details" => $this->processObject($followed_user_details)
+                ),
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -1530,6 +1643,53 @@ class AuthController extends Controller
         }
     }
 
+    public function getFollowRelation($profile_id)
+    {
+        try {
+
+            $loggedInProfileID =  auth()->user()->profile->id;;
+
+            // print_r($loggedInProfileID);
+            // die;
+            $isfollow = Follows::where('following_profile_id', $loggedInProfileID)
+                ->where('followed_profile_id', $profile_id)
+                ->count();
+
+
+            $followRelation = follows::select('following_profile_id', 'followed_profile_id', 'make_profile_private', 'request_status', 'is_approved')->where('followed_profile_id', $profile_id)->where('following_profile_id', $loggedInProfileID)->first();
+
+
+            if (!$followRelation) {
+                return response()->json([
+                    'code' => 404,
+                    'status' => "failure",
+                    'message' => 'followRelation not found',
+                    'data' => [],
+                ]);
+            }
+            $followRelation['isfollow'] = $isfollow ? "true" : "false";
+
+            return response()->json([
+                'status' => 'success',
+                'code' => 200,
+                'message' => 'followRelation data',
+                'Data' => $followRelation,
+            ]);
+
+            // print_r($followRelation->toArray());
+            // die;
+
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'code' => 500,
+                'status' => 'error',
+                'message' => 'An unexpected error occurred.',
+                'errors' => [$e->getMessage()],
+                'data' => [],
+            ], 500);
+        }
+    }
     public function unfollow($profileID)
     {
         try {
@@ -1558,10 +1718,11 @@ class AuthController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'user' => array("following_profile_details" => $this->processObject($following_user_details),
-                    "unfollowed_profile_details" => $this->processObject($unfollowed_user_details)),
+                'user' => array(
+                    "following_profile_details" => $this->processObject($following_user_details),
+                    "unfollowed_profile_details" => $this->processObject($unfollowed_user_details)
+                ),
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'code' => 500,
@@ -1627,15 +1788,23 @@ class AuthController extends Controller
     public function removefollower(Request $request)
     { //to remove follower
         try {
-            DB::table('follows')
-                ->where('following_profile_id', $request->profile_id_to_remove_follower)
-                ->where('followed_profile_id', auth()->user()->id)
-                ->delete();
 
-            $following_user_details = User::where('id', auth()->user()->id)->first();
 
-            $following_profile_id = Follows::where('following_profile_id', $request->profile_id_to_remove_follower)
-                ->where('followed_profile_id', auth()->user()->id)->get();
+            $following_user_details = User::select('id as following_user_id', 'username')
+                ->where('id', auth()->user()->id)
+                ->first();
+
+            $followingProfile_picture = UserDetails::where('profile_id', auth()->user()->profile->id)->first();
+
+
+
+            $following_profile_id = Follows::where('following_profile_id', $request->profile_id)
+                // ->where('followed_profile_id', auth()->user()->id)->get();
+                ->where('followed_profile_id', auth()->user()->profile->id)->get();
+
+
+            $following_user_details['profile_picture'] = $followingProfile_picture->profile_picture;
+            $following_user_details['profile_id'] = auth()->user()->profile->id;
 
             if ($following_profile_id->isEmpty()) {
                 return response()->json([
@@ -1646,22 +1815,40 @@ class AuthController extends Controller
                 ], 404);
             }
 
-            $user_type_id = Profile::select('user_type_id')->where('id', $request->profile_id_to_remove_follower)->first();
+            DB::table('follows')
+                ->where('following_profile_id', $request->profile_id)
+                ->where('followed_profile_id', auth()->user()->profile->id)
+                ->delete();
+
+            $user_type_id = Profile::select('user_type_id', 'user_id')->where('id', $request->profile_id)->first();
+
+            $following_user_details['followed_user_id'] = $user_type_id->user_id;
+            // echo"<pre>";print_r($following_user_details->toArray()); die;
+
 
             if ($user_type_id['user_type_id'] == 3) {
-                $userToFollowId = Profile::select('user_id')->where('id', $request->profile_id_to_remove_follower)->first();
+                $userToFollowId = Profile::select('user_id')->where('id', $request->profile_id)->first();
                 $unfollowed_user_details = CommunityDetail::where('profile_id', $userToFollowId['user_id'])->get();
             } elseif ($user_type_id['user_type_id'] == 1 || $user_type_id['user_type_id'] == 2) {
-                $userToFollowId = Profile::select('user_id')->where('id', $request->profile_id_to_remove_follower)->first();
-                $unfollowed_user_details = User::where('id', $userToFollowId['user_id'])->first();
+                $userToFollowId = Profile::select('user_id')->where('id', $request->profile_id)->first();
+                $unfollowed_user_details = User::select('id as followed_user_id', 'username')->where('id', $userToFollowId['user_id'])->first();
+                // echo"<pre>";print_r($unfollowed_user_details->toArray()); die;
+
+                $unfollowedProfile_picture = UserDetails::where('profile_id', $request->profile_id)->first();
+                $unfollowed_user_details['profile_picture'] = $unfollowedProfile_picture->profile_picture;
+                $unfollowed_user_details['following_user_id'] = auth()->user()->id;
+                $unfollowed_user_details['profile_id'] = $request->profile_id;
             }
 
-            auth()->user()->followers()->detach($request->profile_id_to_remove_follower);
+            auth()->user()->followers()->detach($request->profile_id);
 
             return response()->json([
                 'status' => 'success',
-                'user' => array("following_user_details" => $this->processObject($following_user_details),
-                    "unfollowed_user_details" => $this->processObject($unfollowed_user_details)),
+                'code' => 200,
+                'user' => array(
+                    "following_user_details" => [$this->processObject($following_user_details), $this->processObject($unfollowed_user_details)],
+                    // "unfollowed_user_details" => $this->processObject($unfollowed_user_details)
+                ),
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -1786,7 +1973,6 @@ class AuthController extends Controller
                 'status' => 'success',
                 'user' => array("following_user_details" => $followed),
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'code' => 500,
@@ -1886,12 +2072,12 @@ class AuthController extends Controller
                     'data' => [],
                 ], 404);
             }
+            // echo"<pre>"; print_r($follows->toArray()); die;
 
             // Loop through the follower profiles and fetch details based on user_type_id
             foreach ($follows as $follow) {
                 // Get the user_type_id of the follower profile
                 $user_type_id = Profile::select('user_type_id')->where('id', $follow->following_profile_id)->first();
-
                 if ($user_type_id['user_type_id'] == 3) {
                     // Fetch details for user_type_id 3 (Community Details)
                     $followed_user_details = CommunityDetail::where('profile_id', $follow->following_profile_id)->first();
@@ -1907,6 +2093,13 @@ class AuthController extends Controller
                     $followed_user['username'] = $followed_profile_details->full_name;
                     $followed_user['profile_picture'] = $followed_profile_details->profile_picture;
                     $followed_user['profile_id'] = $followed_profile_details->profile_id;
+
+                    $followed_user['make_profile_private'] = $follow->make_profile_private;
+                    $followed_user['request_status'] = $follow->request_status;
+                    $followed_user['is_approved'] = $follow->is_approved;
+
+                    // echo"<pre>"; print_r($followed_profile_details->is_requesting); die;
+
                 }
 
                 $followed_user['following_profile_id'] = $follow->following_profile_id;
@@ -1917,7 +2110,6 @@ class AuthController extends Controller
                 'status' => 'success',
                 'user' => array("following_user_details" => $followed),
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'code' => 500,
@@ -1928,6 +2120,91 @@ class AuthController extends Controller
             ], 500);
         }
     }
+
+
+    public function followApprove(Request $request)
+    { //to show all follower
+        try {
+            $adminuserProfileID =   auth()->user()->profile->id;
+            // echo"<pre>"; print_r($request->all()); die;
+            // Validate the request parameters
+
+            $validator = Validator::make($request->all(), [
+                'profile_id' => 'required',
+                'confirm_request' => 'required',
+            ]);
+
+            // Check for validation errors
+            if ($validator->fails()) {
+                return response()->json([
+                    'code' => 400,
+                    'status' => "failure",
+                    'message' => "Validation error",
+                    'data' => [],
+                ]);
+            }
+
+            $validatedData = $request->all();
+
+            // echo "<pre>";
+            // print_r($validatedData);
+            // die;
+
+            $UserDetail = UserDetails::where('profile_id', $validatedData['profile_id'])->first();
+
+            $adminUserApprove = UserDetails::where('profile_id', $adminuserProfileID)->first();
+
+
+            if (!$UserDetail) {
+                return response()->json([
+                    'code' => 404,
+                    'status' => 'error',
+                    'message' => 'Profile not found',
+                    'data' => [],
+                ], 404);
+            }
+
+            // $UserDetailData['confirm_request'] = $validatedData['confirm_request'];
+
+            if ($validatedData['confirm_request'] === 'approved') {
+
+                // $UserDetailData['isUserProfileStatus'] = 'true';
+
+                DB::table('follows')
+                    ->where('following_profile_id',  $validatedData['profile_id'])
+                    ->where('followed_profile_id', $adminuserProfileID)
+                    ->update([
+                        'make_profile_private' => $adminUserApprove['make_profile_private'],
+                        'is_approved' => 'approved',
+                        'request_status' => 'true',
+                    ]);
+            }
+
+            // $UserDetailData['isUserProfileStatus'] =  $validatedData['confirm_request'];
+
+            // $UserDetail->update($UserDetailData);
+
+            // echo "<pre>";
+            // print_r($UserDetailData);
+            // die;
+
+            return response()->json([
+                'code' => 200,
+                'status' => 'success',
+                'message' => 'Request updated successfully',
+                // 'data' => $this->processObject($UserDetail),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'code' => 500,
+                'status' => 'error',
+                'message' => 'An unexpected error occurred.',
+                'errors' => [$e->getMessage()],
+                'data' => [],
+            ], 500);
+        }
+    }
+
 
     /**
      * PS-4 Level: Check full name availability.
@@ -2142,5 +2419,4 @@ class AuthController extends Controller
             ], 500);
         }
     }
-
 }

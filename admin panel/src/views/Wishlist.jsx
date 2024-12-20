@@ -24,7 +24,13 @@ export default function Wishlist() {
       setErrorMessage(`Page number ${page} is out of range. Please enter a number between 1 and ${totalPages}.`);
     }
   };
-  
+
+  const handleKeyDown = (e) => {
+    if (e.key === '-' || e.key === 'e') {
+      e.preventDefault();
+    }
+  };
+
   const getWishlist = () => {
     setLoading(true);
     axiosClient.get('/allWishlist')
@@ -110,16 +116,17 @@ export default function Wishlist() {
             type="number"
             value={jumpToPage}
             onChange={(e) => setJumpToPage(e.target.value)}
-            placeholder="Enter page number" className="form-control"
+            className="form-control"
+            min="0"
+            onKeyDown={handleKeyDown}
           />
-          <button onClick={handleJumpToPage}>Jump to Page</button>
+          <button className='btn-custom' onClick={handleJumpToPage}>Jump to Page</button>
+          {errorMessage && (
+            <div className="pagination-error">
+              {errorMessage}
+            </div>
+          )}
         </div>
-
-        {errorMessage && (
-          <div className="pagination-error">
-            {errorMessage}
-          </div>
-        )}
       </div>
     </div>
   );

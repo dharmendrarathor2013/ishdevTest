@@ -28,11 +28,17 @@ export default function ReportedPost() {
       setErrorMessage(`Page number ${page} is out of range. Please enter a number between 1 and ${totalPages}.`);
     }
   };
+  const handleKeyDown = (e) => {
+    if (e.key === '-' || e.key === 'e') {
+      e.preventDefault();
+    }
+  };
 
   const getReportPost = () => {
     setLoading(true);
     axiosClient.get('/get-all-reported-post')
       .then(({ data }) => {
+        // console.log('data', data.data);
         setLoading(false);
         setReportPost(data.data);
         setSearchResults(data.data);
@@ -64,8 +70,7 @@ export default function ReportedPost() {
           <thead>
             <tr>
               <th>Sr No.</th>
-              <th>Reported By Profile</th>
-              <th>Boost Status</th>
+              <th>Post ID</th>
               <th>Report Count</th>
               <th>Actions</th>
             </tr>
@@ -84,18 +89,11 @@ export default function ReportedPost() {
                 <tr key={b.id}>
                   <td>{indexOfFirstItem + index + 1}</td>
                   <td>
-                    {b.profile?.user_type_id === 3 ? b.profile?.community_detail.name_of_community : b.profile?.user_detail.full_name}
+                    {b.post_id}
                   </td>
-                  <td>{b.post?.boost_status}</td>
-                  <td>{b.report_flag}</td>
+                  <td>{b.report_count}</td>
                   <td>
-                    {b?.post ? (
-                      <>
-                        <Link className="btn-custom" to={'/reported-post/' + b.post_id}>View</Link>
-                      </>
-                    ) : (
-                      <>Deleted</>
-                    )}
+                    <Link className="btn-custom" to={'/reported-post/' + b.post_id}>View</Link>
                   </td>
 
                 </tr>
@@ -103,40 +101,45 @@ export default function ReportedPost() {
             </tbody>
           )}
         </table>
-        <div className="pagination">
-          <button
-            className={`btn-pagination paginationButton ${currentPage === 1 ? 'disabled' : ''}`}
-            onClick={() => paginate(currentPage - 1)}
-            disabled={currentPage === 1}
-          >
-            {'<'}
-          </button>
-          <span className="currentPageNumber">
-            Page <span style={{ color: '#eb6238', fontWeight: 'bold' }}>{currentPage}</span> of {totalPages}
-          </span>
-          <button
-            className={`btn-pagination paginationButton ${currentPage === totalPages ? 'disabled' : ''}`}
-            onClick={() => paginate(currentPage + 1)}
-            disabled={currentPage === totalPages}
-          >
-            {'>'}
-          </button>
-        </div>
-        <div className="jump-to-page" >
-          <input
-            type="number"
-            value={jumpToPage}
-            onChange={(e) => setJumpToPage(e.target.value)}
-            placeholder="Enter page number" className="form-control"
-          />
-          <button onClick={handleJumpToPage}>Jump to Page</button>
+        <div>
+          <div className="pagination">
+            <button
+              className={`btn-pagination paginationButton ${currentPage === 1 ? 'disabled' : ''}`}
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              {'<'}
+            </button>
+            <span className="currentPageNumber">
+              Page <span style={{ color: '#eb6238', fontWeight: 'bold' }}>{currentPage}</span> of {totalPages}
+            </span>
+            <button
+              className={`btn-pagination paginationButton ${currentPage === totalPages ? 'disabled' : ''}`}
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              {'>'}
+            </button>
+          </div>
+          <div className="jump-to-page" >
+            <input
+              type="number"
+              value={jumpToPage}
+              onChange={(e) => setJumpToPage(e.target.value)}
+              className="form-control"
+              min="0"
+              onKeyDown={handleKeyDown}
+            />
+            <button className='btn-custom' onClick={handleJumpToPage}>Jump to Page</button>
+            {errorMessage && (
+              <div className="pagination-error">
+                {errorMessage}
+              </div>
+            )}
+          </div>
         </div>
 
-        {errorMessage && (
-          <div className="pagination-error">
-            {errorMessage}
-          </div>
-        )}
+
       </div>
     </div>
   );

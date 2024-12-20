@@ -55,7 +55,8 @@ export default function GreenTickDetails() {
             const updatedUser = {
                 ...user,
                 profile_id: profile_id,
-                verification_status: user.verification_status
+                verification_status: user.verification_status,
+                user_notification:1,
             };
 
             if ((user.verification_status === "rejected") && !user.invalidate_reason) {
@@ -153,12 +154,12 @@ export default function GreenTickDetails() {
                             </div>
                             <div className="col-lg-9 d-flex">
                                 {user.doc_front ? (
-                                    <a href={doc_front} target="_blank" rel="noopener noreferrer" className='text-decoration-none default-bg-clr text-dark input-bdr p-1 mr-3'>View Document Front</a>
+                                    <a href={doc_front} target="_blank" rel="noopener noreferrer" className='text-decoration-none highlight default-bg-clr text-white input-bdr p-1 mr-3'>View Document Front</a>
                                 ) : (
                                     <a className='text-decoration-none default-bg-clr text-dark input-bdr p-1 mr-3'>Front Document Not Available</a>
                                 )}
                                 {user.doc_back ? (
-                                    <a href={doc_back} target="_blank" rel="noopener noreferrer" className='text-decoration-none default-bg-clr text-dark input-bdr p-1 mr-3'>View Document Back</a>
+                                    <a href={doc_back} target="_blank" rel="noopener noreferrer" className='highlight text-decoration-none default-bg-clr text-white input-bdr p-1 mr-3'>View Document Back</a>
                                 ) : (
                                     <a className='text-decoration-none default-bg-clr text-dark input-bdr p-1 mr-3'>Back Document Not Available</a>
                                 )}

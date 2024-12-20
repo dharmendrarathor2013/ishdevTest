@@ -27,7 +27,12 @@ export default function Community() {
     }
   };
 
-
+  const handleKeyDown = (e) => {
+    if (e.key === '-' || e.key === 'e') {
+      e.preventDefault();
+    }
+  };
+  
   const getCommunities = () => {
     setLoading(true);
     axiosClient.get('/showAllCommunity')
@@ -138,20 +143,21 @@ export default function Community() {
           </button>
         </div>
         <div className="jump-to-page" >
-          <input
-            type="number"
-            value={jumpToPage}
-            onChange={(e) => setJumpToPage(e.target.value)}
-            placeholder="Enter page number" className="form-control"
-          />
-          <button onClick={handleJumpToPage}>Jump to Page</button>
-        </div>
-
-        {errorMessage && (
-          <div className="pagination-error">
-            {errorMessage}
+            <input
+              type="number"
+              value={jumpToPage}
+              onChange={(e) => setJumpToPage(e.target.value)}
+              className="form-control"
+              min="0"
+              onKeyDown={handleKeyDown}
+            />
+            <button className='btn-custom' onClick={handleJumpToPage}>Jump to Page</button>
+            {errorMessage && (
+              <div className="pagination-error">
+                {errorMessage}
+              </div>
+            )}
           </div>
-        )}
       </div>
     </div>
   );

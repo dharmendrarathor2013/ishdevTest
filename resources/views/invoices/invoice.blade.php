@@ -53,6 +53,16 @@
         .margin-right-5{
             margin-right: 5%;
         }
+        .footer-line {
+            width: 100%;
+            height: 1px;
+            border: 0;
+            margin: 1px;
+            background-color: gray;    
+        }
+        .margin-5{
+            margin : 5px;
+        }
         @media screen and (max-width: 660px) {
             .invoice {
                 padding: 10px;
@@ -168,6 +178,10 @@
                     <p>Amount Paid: Rs. {{ $boostRequest->total }}</p>
                 </div>
             </div>
+            <hr class="footer-line">
+            <p class="margin-5">The supplies detailed in this invoice are not subject to reverse charge.</p>
+            <hr class="footer-line">
+            <p class="margin-5">GST collected under the Goods and Services Tax Act, Government of India. For any GST-related queries, please visit the official GST portal at <a href="https://www.gst.gov.in/">www.gst.gov.in.</a></p>
         </div>
     </div>
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>

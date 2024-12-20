@@ -9,6 +9,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.1",
+        "appy/fcmhttpv1": "dev-master",
         "aws/aws-sdk-php": "^3.282",
         "barryvdh/laravel-dompdf": "^2.2",
         "brainfoolong/cryptojs-aes-php": "^2.2",
@@ -16,8 +17,10 @@
         "doctrine/dbal": "^3.8",
         "dompdf/dompdf": "^2.0",
         "google/apiclient": "^2.16",
+        "google/auth": "*",
         "gr8shivam/laravel-sms-api": "^3.0",
         "guzzlehttp/guzzle": "^7.8",
+        "illuminate/support": "*",
         "intervention/image": "^2.7",
         "laravel/cashier": "^14.12",
         "laravel/framework": "^10.10",

@@ -28,9 +28,25 @@ export default function ReportedPostDetails() {
     }
   };
 
+  const deletePost = () => {
+    if (window.confirm('Are you sure you want to delete this post?')) {
+      setLoading(true);
+      axiosClient.delete(`/delete-post-by-admin/${post_id}`)
+        .then(({ data }) => {
+          window.location.reload();
+          setLoading(true);
+        })
+        .catch(() => {
+          setLoading(false);
+        });
+    }
+  };
+
   const getReportPost = () => {
-    axiosClient.get(`/post/${post_id}`)
+    axiosClient.get(`/get-reported-post/${post_id}`)
       .then(({ data }) => {
+
+        // console.log('data', data.data.post);
         setReportPost(data.data.post);
       })
       .catch(err => {
@@ -41,11 +57,32 @@ export default function ReportedPostDetails() {
       });
   };
 
-  const post_image = reportPost && reportPost.post_related_data && !reportPost.post_related_data[0].post_data.endsWith('.mp4') && !reportPost.post_related_data[0].post_data.endsWith('.gif')
-    ? `${import.meta.env.VITE_API_BASE_URL}/${reportPost.post_related_data[0].post_data}`
-    : '';
+  function getPostType(fileName) {
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp'];
+    const videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'webm'];
+
+    const fileExtension = fileName.split('.').pop().toLowerCase();
+
+    if (imageExtensions.includes(fileExtension)) {
+      return 'image';
+    } else if (videoExtensions.includes(fileExtension)) {
+      return 'video';
+    } else {
+      return 'unknown';
+    }
+  }
+
+  // const post_image = reportPost && reportPost.post_related_data && !reportPost.post_related_data[0].post_data.endsWith('.mp4') && !reportPost.post_related_data[0].post_data.endsWith('.gif')
+  //   ? `${import.meta.env.VITE_API_BASE_URL}/${reportPost?.post_related_data[0]?.post_data}`
+  //   : '';
+
   const dummy_image = `${import.meta.env.VITE_API_BASE_URL}/communitydocument/dummy-profile-pic.jpg`;
 
+  const postType = reportPost?.post_related_data[0]?.post_data
+    ? getPostType(reportPost.post_related_data[0].post_data)
+    : 'image';
+
+ 
   return (
     <div className="card animated fadeInDown">
       {reportPost && (
@@ -64,6 +101,14 @@ export default function ReportedPostDetails() {
               )}
             </div>
             <div className="col-lg-9">
+              <div className="row">
+                <div className="col-lg-3">
+                  <label>Post Deleted</label>
+                </div>
+                <div className="col-lg-9">
+                  <input value={reportPost?.deleted_at ? 'Yes' : 'No'} readOnly />
+                </div>
+              </div>
               <div className="row">
                 <div className="col-lg-3">
                   <label>Report Count</label>
@@ -109,7 +154,9 @@ export default function ReportedPostDetails() {
                   <label>Post Type</label>
                 </div>
                 <div className="col-lg-9">
-                  <input value={reportPost?.post_type === '1' ? 'Image' : 'Video'} readOnly />
+                  {/* <input value={reportPost?.post_type === '1' ? 'Image' : 'Video'} readOnly /> */}
+                  <input value={postType} readOnly />
+
                 </div>
               </div>
               <div className="row">
@@ -152,8 +199,20 @@ export default function ReportedPostDetails() {
                   restoreReportedPost();
                 }}
               >
-                Restore Reports
+                Restore Post
               </a>
+              {reportPost?.deleted_at === null && (
+                <a
+                  href="#"
+                  className="btn-custom ml-2"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    deletePost();
+                  }}
+                >
+                  Delete Post
+                </a>
+              )}
             </div>
           </div>
         </div>

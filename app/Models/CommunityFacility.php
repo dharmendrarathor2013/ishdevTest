@@ -18,6 +18,7 @@ class CommunityFacility extends Model
         'facility',
         'key',
         'value',
+        'city',
         'deleted_at'
     ];
 }
